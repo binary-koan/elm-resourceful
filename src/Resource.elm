@@ -4,6 +4,9 @@ import Task exposing (Task)
 import Html exposing (Html)
 
 
+-- BUILDING
+
+
 type alias Resource resource update =
     { empty : resource
     , update : update -> resource -> resource
@@ -20,6 +23,21 @@ type alias Store resource =
 
 type alias Renderer resource update =
     Model resource -> Html (Msg resource update)
+
+
+type Field update
+    = TextField String String (String -> update)
+    | TextArea String String (String -> update)
+    | NumberField String Float (Float -> update)
+    | CheckboxField String Bool (Bool -> update)
+
+
+type alias FieldBuilder resource update =
+    resource -> List (Field update)
+
+
+
+-- MODEL
 
 
 type alias Model resource =
@@ -57,23 +75,9 @@ type LoadState err
     | Error err
 
 
-type Msg resource update
-    = Edit ResourceId
-    | Update ResourceId update
-    | Create
-    | CreateSucceeded resource
-    | CreateFailed String
-
-
-type Field update
-    = TextField String String (String -> update)
-    | TextArea String String (String -> update)
-    | NumberField String Float (Float -> update)
-    | CheckboxField String Bool (Bool -> update)
-
-
-type alias FieldBuilder resource update =
-    resource -> List (Field update)
+init : Resource r u -> ( Model r, Cmd (Msg r u) )
+init resource =
+    emptyModel resource.empty ! []
 
 
 emptyModel : resource -> Model resource
@@ -86,14 +90,16 @@ emptyModel emptyResource =
     }
 
 
-editableNewResource : resource -> Editable resource
-editableNewResource resource =
-    startEditing NewId (editable NewId resource)
+
+-- UPDATE
 
 
-init : Resource r u -> ( Model r, Cmd (Msg r u) )
-init resource =
-    ( emptyModel resource.empty, Cmd.none )
+type Msg resource update
+    = Edit ResourceId
+    | Update ResourceId update
+    | Create
+    | CreateSucceeded resource
+    | CreateFailed String
 
 
 update : Resource r u -> Msg r u -> Model r -> ( Model r, Cmd (Msg r u) )
@@ -118,11 +124,6 @@ update resource msg model =
 
         Edit id ->
             { model | list = List.map (startEditing id) model.list } ! []
-
-
-editable : ResourceId -> r -> Editable r
-editable id resource =
-    { id = id, original = resource, editor = Nothing, validation = Pass, saveError = Nothing }
 
 
 startEditing : ResourceId -> Editable r -> Editable r
@@ -156,6 +157,24 @@ createHandler result =
             CreateFailed err
 
 
+
+-- VIEW
+
+
 view : Resource r u -> Model r -> Html (Msg r u)
 view resource model =
     resource.render model
+
+
+
+-- UTILITIES
+
+
+editableNewResource : resource -> Editable resource
+editableNewResource resource =
+    startEditing NewId (editable NewId resource)
+
+
+editable : ResourceId -> r -> Editable r
+editable id resource =
+    { id = id, original = resource, editor = Nothing, validation = Pass, saveError = Nothing }
