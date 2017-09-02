@@ -9,12 +9,21 @@ import Resource exposing (..)
 basicRenderer : FieldBuilder r u -> Renderer r u
 basicRenderer fields =
     \model ->
-        div [] (List.map (resourceView fields) model.list ++ [ createForm fields model ])
+        div [] (List.map (resourceView fields) model.list ++ [ resourceView fields model.new ])
 
 
 resourceView : FieldBuilder r u -> Editable r -> Html (Msg r u)
-resourceView fields { original } =
-    li [] (List.map fieldView (fields original))
+resourceView fields editable =
+    let
+        view =
+            case editable.editor of
+                Just res ->
+                    Html.form [ onSubmit Create ] (List.map (fieldInput editable) (fields res) ++ [ createButton ])
+
+                Nothing ->
+                    div [] (List.map fieldView (fields editable.original) ++ [ button [ onClick (Edit editable.id) ] [] ])
+    in
+        li [] [ view ]
 
 
 fieldView : Field u -> Html (Msg r u)
@@ -36,40 +45,31 @@ fieldView field =
                 text "no"
 
 
-createForm : FieldBuilder r u -> Model r -> Html (Msg r u)
-createForm fields model =
-    let
-        newFields =
-            fields model.new
-    in
-        Html.form [ onSubmit Create ] (List.map (fieldInput model.new) newFields ++ [ createButton ])
-
-
-fieldInput : r -> Field u -> Html (Msg r u)
-fieldInput resource field =
+fieldInput : Editable r -> Field u -> Html (Msg r u)
+fieldInput { id } field =
     case field of
         TextField title content op ->
             div []
                 [ label [] [ text title ]
-                , input [ type_ "text", value content, onInput (op >> Update resource) ] []
+                , input [ type_ "text", value content, onInput (op >> Update id) ] []
                 ]
 
         TextArea title content op ->
             div []
                 [ label [] [ text title ]
-                , textarea [ onInput (op >> Update resource) ] [ text content ]
+                , textarea [ onInput (op >> Update id) ] [ text content ]
                 ]
 
         NumberField title content op ->
             div []
                 [ label [] [ text title ]
-                , input [ type_ "number", onInput (handleNumber content >> op >> Update resource) ] [ text (toString content) ]
+                , input [ type_ "number", onInput (handleNumber content >> op >> Update id) ] [ text (toString content) ]
                 ]
 
         CheckboxField title content op ->
             div []
                 [ label [] [ text title ]
-                , input [ type_ "checkbox", checked content, onClick (op (not content) |> Update resource) ] []
+                , input [ type_ "checkbox", checked content, onClick (op (not content) |> Update id) ] []
                 ]
 
 

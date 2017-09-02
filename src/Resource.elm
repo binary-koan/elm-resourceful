@@ -25,15 +25,23 @@ type alias Renderer resource update =
 type alias Model resource =
     { state : LoadState String
     , list : List (Editable resource)
-    , new : resource
+    , nextId : Int
+    , new : Editable resource
     , creating : Bool
     }
 
 
+type ResourceId
+    = ExistingId Int
+    | NewId
+
+
 type alias Editable r =
-    { original : r
+    { id : ResourceId
+    , original : r
     , editor : Maybe r
     , validation : Validation
+    , saveError : Maybe String
     }
 
 
@@ -50,7 +58,8 @@ type LoadState err
 
 
 type Msg resource update
-    = Update resource update
+    = Edit ResourceId
+    | Update ResourceId update
     | Create
     | CreateSucceeded resource
     | CreateFailed String
@@ -68,12 +77,18 @@ type alias FieldBuilder resource update =
 
 
 emptyModel : resource -> Model resource
-emptyModel new =
+emptyModel emptyResource =
     { state = NotRequested
     , list = []
-    , new = new
+    , nextId = 0
+    , new = editableNewResource emptyResource
     , creating = False
     }
+
+
+editableNewResource : resource -> Editable resource
+editableNewResource resource =
+    startEditing NewId (editable NewId resource)
 
 
 init : Resource r u -> ( Model r, Cmd (Msg r u) )
@@ -84,22 +99,51 @@ init resource =
 update : Resource r u -> Msg r u -> Model r -> ( Model r, Cmd (Msg r u) )
 update resource msg model =
     case msg of
-        Update _ update ->
-            { model | new = resource.update update model.new } ! []
+        Update id update ->
+            doUpdate id (resource.update update) model ! []
 
         Create ->
-            model ! [ Task.attempt createHandler (resource.store.create model.new) ]
+            case model.new.editor of
+                Just res ->
+                    model ! [ Task.attempt createHandler (resource.store.create res) ]
+
+                Nothing ->
+                    model ! []
 
         CreateSucceeded res ->
-            { model | list = (editable res) :: model.list, new = resource.empty } ! []
+            { model | list = (editable (ExistingId model.nextId) res) :: model.list, nextId = model.nextId + 1, new = editableNewResource resource.empty } ! []
 
         CreateFailed _ ->
             model ! []
 
+        Edit id ->
+            { model | list = List.map (startEditing id) model.list } ! []
 
-editable : r -> Editable r
-editable resource =
-    { original = resource, editor = Nothing, validation = Pass }
+
+editable : ResourceId -> r -> Editable r
+editable id resource =
+    { id = id, original = resource, editor = Nothing, validation = Pass, saveError = Nothing }
+
+
+startEditing : ResourceId -> Editable r -> Editable r
+startEditing id editable =
+    if editable.id == id then
+        { editable | editor = Just editable.original }
+    else
+        editable
+
+
+doUpdate : ResourceId -> (r -> r) -> Model r -> Model r
+doUpdate id updater model =
+    { model | new = updateEditor id updater model.new, list = List.map (updateEditor id updater) model.list }
+
+
+updateEditor : ResourceId -> (r -> r) -> Editable r -> Editable r
+updateEditor id updater editable =
+    if editable.id == id then
+        { editable | editor = Maybe.map updater editable.editor }
+    else
+        editable
 
 
 createHandler : Result String r -> Msg r u
