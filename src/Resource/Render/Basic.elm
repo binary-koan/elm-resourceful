@@ -12,9 +12,9 @@ basicRenderer fields =
         div [] (List.map (resourceView fields) model.list ++ [ createForm fields model ])
 
 
-resourceView : FieldBuilder r u -> ( r, Maybe r ) -> Html (Msg r u)
-resourceView fields ( resource, editing ) =
-    li [] (List.map fieldView (fields resource))
+resourceView : FieldBuilder r u -> Editable r -> Html (Msg r u)
+resourceView fields { original } =
+    li [] (List.map fieldView (fields original))
 
 
 fieldView : Field u -> Html (Msg r u)

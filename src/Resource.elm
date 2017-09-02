@@ -24,10 +24,22 @@ type alias Renderer resource update =
 
 type alias Model resource =
     { state : LoadState String
-    , list : List ( resource, Maybe resource )
+    , list : List (Editable resource)
     , new : resource
     , creating : Bool
     }
+
+
+type alias Editable r =
+    { original : r
+    , editor : Maybe r
+    , validation : Validation
+    }
+
+
+type Validation
+    = Pass
+    | Fail (List ( String, String ))
 
 
 type LoadState err
@@ -79,10 +91,15 @@ update resource msg model =
             model ! [ Task.attempt createHandler (resource.store.create model.new) ]
 
         CreateSucceeded res ->
-            { model | list = ( res, Nothing ) :: model.list, new = resource.empty } ! []
+            { model | list = (editable res) :: model.list, new = resource.empty } ! []
 
         CreateFailed _ ->
             model ! []
+
+
+editable : r -> Editable r
+editable resource =
+    { original = resource, editor = Nothing, validation = Pass }
 
 
 createHandler : Result String r -> Msg r u
