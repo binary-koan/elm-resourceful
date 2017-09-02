@@ -9,23 +9,7 @@ import Resource exposing (..)
 basicRenderer : FieldBuilder r u -> Renderer r u
 basicRenderer fields =
     \model ->
-        div [] [ listView fields model, createForm fields model ]
-
-
-listView : FieldBuilder r u -> Model r -> Html (Msg r u)
-listView fields model =
-    case model.list of
-        NotRequested ->
-            text "Waiting ..."
-
-        Loading ->
-            text "Loading ..."
-
-        Loaded items ->
-            ul [] (List.map (resourceView fields) items)
-
-        Error err ->
-            p [] [ text err ]
+        div [] (List.map (resourceView fields) model.list ++ [ createForm fields model ])
 
 
 resourceView : FieldBuilder r u -> ( r, Maybe r ) -> Html (Msg r u)
@@ -58,7 +42,7 @@ createForm fields model =
         newFields =
             fields model.new
     in
-        Html.form [] (List.map (fieldInput model.new) newFields ++ [ createButton ])
+        Html.form [ onSubmit Create ] (List.map (fieldInput model.new) newFields ++ [ createButton ])
 
 
 fieldInput : r -> Field u -> Html (Msg r u)
@@ -101,4 +85,4 @@ handleNumber current new =
 
 createButton : Html (Msg r u)
 createButton =
-    button [ type_ "submit", onClick Create ] [ text "Create" ]
+    button [ type_ "submit" ] [ text "Create" ]

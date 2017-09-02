@@ -23,22 +23,25 @@ type alias Renderer resource update =
 
 
 type alias Model resource =
-    { list : LoadState String (List ( resource, Maybe resource ))
+    { state : LoadState String
+    , list : List ( resource, Maybe resource )
     , new : resource
     , creating : Bool
     }
 
 
-type LoadState err ok
+type LoadState err
     = NotRequested
     | Loading
-    | Loaded ok
+    | Loaded
     | Error err
 
 
 type Msg resource update
     = Update resource update
     | Create
+    | CreateSucceeded resource
+    | CreateFailed String
 
 
 type Field update
@@ -54,7 +57,8 @@ type alias FieldBuilder resource update =
 
 emptyModel : resource -> Model resource
 emptyModel new =
-    { list = NotRequested
+    { state = NotRequested
+    , list = []
     , new = new
     , creating = False
     }
@@ -68,8 +72,27 @@ init resource =
 update : Resource r u -> Msg r u -> Model r -> ( Model r, Cmd (Msg r u) )
 update resource msg model =
     case msg of
-        _ ->
-            ( model, Cmd.none )
+        Update _ update ->
+            { model | new = resource.update update model.new } ! []
+
+        Create ->
+            model ! [ Task.attempt createHandler (resource.store.create model.new) ]
+
+        CreateSucceeded res ->
+            { model | list = ( res, Nothing ) :: model.list, new = resource.empty } ! []
+
+        CreateFailed _ ->
+            model ! []
+
+
+createHandler : Result String r -> Msg r u
+createHandler result =
+    case result of
+        Ok res ->
+            CreateSucceeded res
+
+        Err err ->
+            CreateFailed err
 
 
 view : Resource r u -> Model r -> Html (Msg r u)
