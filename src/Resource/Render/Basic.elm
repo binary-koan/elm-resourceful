@@ -18,7 +18,7 @@ resourceView fields editable =
         view =
             case editable.editor of
                 Just res ->
-                    Html.form [ onSubmit (Save editable.id) ] (List.map (fieldInput editable) (fields res) ++ formButtons editable)
+                    Html.form [ onSubmit (Save editable.id) ] (List.map (fieldInput editable) (fields res) ++ [ formButtons editable ])
 
                 Nothing ->
                     div [] (List.map fieldView (fields editable.original) ++ [ editButton editable ])
@@ -30,19 +30,24 @@ fieldView : Field u -> Html (Msg r u)
 fieldView field =
     case field of
         TextField title content _ ->
-            p [] [ text title, text content ]
+            p [] [ fieldName title, text content ]
 
         TextArea title content _ ->
-            p [] [ text title, text content ]
+            p [] [ fieldName title, text content ]
 
         NumberField title n _ ->
-            pre [] [ text title, text (toString n) ]
+            pre [] [ fieldName title, text (toString n) ]
 
         CheckboxField title v _ ->
             if v then
-                p [] [ text title, text "yes" ]
+                p [] [ fieldName title, text "yes" ]
             else
-                p [] [ text title, text "no" ]
+                p [] [ fieldName title, text "no" ]
+
+
+fieldName : String -> Html (Msg r u)
+fieldName title =
+    strong [] [ text (title ++ ": ") ]
 
 
 fieldInput : Editable r -> Field u -> Html (Msg r u)
@@ -50,25 +55,25 @@ fieldInput { id } field =
     case field of
         TextField title content op ->
             div []
-                [ label [] [ text title ]
+                [ label [ class "basic-resource-label" ] [ text title ]
                 , input [ class "basic-resource-input", type_ "text", value content, onInput (op >> Update id) ] []
                 ]
 
         TextArea title content op ->
             div []
-                [ label [] [ text title ]
+                [ label [ class "basic-resource-label" ] [ text title ]
                 , textarea [ class "basic-resource-input", onInput (op >> Update id) ] [ text content ]
                 ]
 
         NumberField title content op ->
             div []
-                [ label [] [ text title ]
+                [ label [ class "basic-resource-label" ] [ text title ]
                 , input [ class "basic-resource-input", type_ "number", onInput (handleNumber content >> op >> Update id) ] [ text (toString content) ]
                 ]
 
         CheckboxField title content op ->
             div []
-                [ label [] [ text title ]
+                [ label [ class "basic-resource-label" ] [ text title ]
                 , input [ type_ "checkbox", checked content, onClick (op (not content) |> Update id) ] []
                 ]
 
@@ -88,13 +93,14 @@ editButton editable =
     button [ class "basic-resource-button", onClick (Edit editable.id) ] [ text "Edit" ]
 
 
-formButtons : Editable r -> List (Html (Msg r u))
+formButtons : Editable r -> Html (Msg r u)
 formButtons editable =
     case editable.id of
         NewId ->
-            [ button [ class "basic-resource-button", type_ "submit" ] [ text "Create" ] ]
+            div [] [ button [ class "basic-resource-button", type_ "submit" ] [ text "Create" ] ]
 
         ExistingId id ->
-            [ button [ class "basic-resource-button", type_ "submit" ] [ text "Update" ]
-            , button [ class "basic-resource-button", type_ "button", onClick (StopEditing editable.id) ] [ text "Cancel" ]
-            ]
+            div []
+                [ button [ class "basic-resource-button", type_ "submit" ] [ text "Update" ]
+                , button [ class "basic-resource-button", type_ "button", onClick (StopEditing editable.id) ] [ text "Cancel" ]
+                ]
