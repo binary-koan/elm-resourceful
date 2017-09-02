@@ -18,6 +18,7 @@ type alias Resource resource update =
 type alias Store resource =
     { list : Task String (List resource)
     , create : resource -> Task String resource
+    , update : resource -> Task String resource
     }
 
 
@@ -96,40 +97,57 @@ emptyModel emptyResource =
 
 type Msg resource update
     = Edit ResourceId
+    | StopEditing ResourceId
     | Update ResourceId update
-    | Create
-    | CreateSucceeded resource
-    | CreateFailed String
+    | Save ResourceId
+    | SaveSucceeded ResourceId resource
+    | SaveFailed ResourceId String
 
 
 update : Resource r u -> Msg r u -> Model r -> ( Model r, Cmd (Msg r u) )
 update resource msg model =
     case msg of
+        Edit id ->
+            { model | list = List.map (startEditing id) model.list } ! []
+
+        StopEditing id ->
+            { model | list = List.map (stopEditing id) model.list } ! []
+
         Update id update ->
             doUpdate id (resource.update update) model ! []
 
-        Create ->
-            case model.new.editor of
-                Just res ->
-                    model ! [ Task.attempt createHandler (resource.store.create res) ]
+        Save id ->
+            case id of
+                NewId ->
+                    startCreate resource model
 
-                Nothing ->
-                    model ! []
+                ExistingId _ ->
+                    startUpdate resource id model
 
-        CreateSucceeded res ->
-            { model | list = (editable (ExistingId model.nextId) res) :: model.list, nextId = model.nextId + 1, new = editableNewResource resource.empty } ! []
+        SaveSucceeded id res ->
+            case id of
+                NewId ->
+                    finishCreate res resource.empty model
 
-        CreateFailed _ ->
+                ExistingId _ ->
+                    finishUpdate res id model
+
+        SaveFailed _ _ ->
             model ! []
-
-        Edit id ->
-            { model | list = List.map (startEditing id) model.list } ! []
 
 
 startEditing : ResourceId -> Editable r -> Editable r
 startEditing id editable =
     if editable.id == id then
         { editable | editor = Just editable.original }
+    else
+        editable
+
+
+stopEditing : ResourceId -> Editable r -> Editable r
+stopEditing id editable =
+    if editable.id == id then
+        { editable | editor = Nothing }
     else
         editable
 
@@ -147,14 +165,64 @@ updateEditor id updater editable =
         editable
 
 
-createHandler : Result String r -> Msg r u
-createHandler result =
+startCreate : Resource r u -> Model r -> ( Model r, Cmd (Msg r u) )
+startCreate resource model =
+    case model.new.editor of
+        Just res ->
+            model ! [ Task.attempt (saveHandler model.new.id) (resource.store.create res) ]
+
+        Nothing ->
+            model ! []
+
+
+startUpdate : Resource r u -> ResourceId -> Model r -> ( Model r, Cmd (Msg r u) )
+startUpdate resource id model =
+    case findEditor id model.list of
+        Just res ->
+            model ! [ Task.attempt (saveHandler id) (resource.store.update res) ]
+
+        Nothing ->
+            model ! []
+
+
+finishCreate : r -> r -> Model r -> ( Model r, Cmd (Msg r u) )
+finishCreate resource empty model =
+    { model | list = (editable (ExistingId model.nextId) resource) :: model.list, nextId = model.nextId + 1, new = editableNewResource empty } ! []
+
+
+finishUpdate : r -> ResourceId -> Model r -> ( Model r, Cmd (Msg r u) )
+finishUpdate resource id model =
+    let
+        updateItem id resource editable =
+            if editable.id == id then
+                { editable | original = resource, editor = Nothing }
+            else
+                editable
+    in
+        { model | list = List.map (updateItem id resource) model.list } ! []
+
+
+saveHandler : ResourceId -> Result String r -> Msg r u
+saveHandler id result =
     case result of
         Ok res ->
-            CreateSucceeded res
+            SaveSucceeded id res
 
         Err err ->
-            CreateFailed err
+            SaveFailed id err
+
+
+findEditor : ResourceId -> List (Editable r) -> Maybe r
+findEditor id list =
+    case list of
+        first :: rest ->
+            if first.id == id then
+                first.editor
+            else
+                findEditor id rest
+
+        [] ->
+            Nothing
 
 
 

@@ -8,4 +8,5 @@ memoryStore : Store resource
 memoryStore =
     { list = Task.succeed []
     , create = Task.succeed
+    , update = Task.succeed
     }

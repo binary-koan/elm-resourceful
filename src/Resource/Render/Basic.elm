@@ -18,10 +18,10 @@ resourceView fields editable =
         view =
             case editable.editor of
                 Just res ->
-                    Html.form [ onSubmit Create ] (List.map (fieldInput editable) (fields res) ++ [ createButton ])
+                    Html.form [ onSubmit (Save editable.id) ] (List.map (fieldInput editable) (fields res) ++ formButtons editable)
 
                 Nothing ->
-                    div [] (List.map fieldView (fields editable.original) ++ [ button [ onClick (Edit editable.id) ] [] ])
+                    div [] (List.map fieldView (fields editable.original) ++ [ button [ onClick (Edit editable.id) ] [ text "Edit" ] ])
     in
         li [] [ view ]
 
@@ -83,6 +83,13 @@ handleNumber current new =
             f
 
 
-createButton : Html (Msg r u)
-createButton =
-    button [ type_ "submit" ] [ text "Create" ]
+formButtons : Editable r -> List (Html (Msg r u))
+formButtons editable =
+    case editable.id of
+        NewId ->
+            [ button [ type_ "submit" ] [ text "Create" ] ]
+
+        ExistingId id ->
+            [ button [ type_ "submit" ] [ text "Update" ]
+            , button [ type_ "button", onClick (StopEditing editable.id) ] [ text "Cancel" ]
+            ]
