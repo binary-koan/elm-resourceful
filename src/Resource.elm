@@ -12,6 +12,7 @@ type alias Resource resource update =
     , update : update -> resource -> resource
     , store : Store resource
     , render : Renderer resource update
+    , sortWith : resource -> resource -> Order
     }
 
 
@@ -19,6 +20,7 @@ type alias Store resource =
     { list : Task String (List resource)
     , create : resource -> Task String resource
     , update : resource -> Task String resource
+    , pageSize : Maybe Int
     }
 
 
@@ -127,7 +129,7 @@ update resource msg model =
         SaveSucceeded id res ->
             case id of
                 NewId ->
-                    finishCreate res resource.empty model
+                    finishCreate res resource model
 
                 ExistingId _ ->
                     finishUpdate res id model
@@ -185,9 +187,23 @@ startUpdate resource id model =
             model ! []
 
 
-finishCreate : r -> r -> Model r -> ( Model r, Cmd (Msg r u) )
-finishCreate resource empty model =
-    { model | list = (editable (ExistingId model.nextId) resource) :: model.list, nextId = model.nextId + 1, new = editableNewResource empty } ! []
+finishCreate : r -> Resource r u -> Model r -> ( Model r, Cmd (Msg r u) )
+finishCreate res resource model =
+    let
+        newList =
+            editable (ExistingId model.nextId) res
+                :: model.list
+                |> List.sortWith (\r1 r2 -> resource.sortWith r1.original r2.original)
+
+        clampedList =
+            case resource.store.pageSize of
+                Nothing ->
+                    newList
+
+                Just size ->
+                    newList |> List.take size
+    in
+        { model | list = clampedList, nextId = model.nextId + 1, new = editableNewResource resource.empty } ! []
 
 
 finishUpdate : r -> ResourceId -> Model r -> ( Model r, Cmd (Msg r u) )

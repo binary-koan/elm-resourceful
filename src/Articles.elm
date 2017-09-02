@@ -28,6 +28,7 @@ articles =
     , update = updateArticle
     , store = memoryStore
     , render = basicRenderer fields
+    , sortWith = \a1 a2 -> compare a1.title a2.title
     }
 
 

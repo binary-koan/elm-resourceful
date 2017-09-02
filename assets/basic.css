@@ -1,0 +1,37 @@
+.basic-resource-list {
+  padding: 0;
+}
+
+.basic-resource {
+  list-style-type: none;
+  margin-bottom: 1rem;
+}
+
+.basic-resource-input {
+  padding: 0.5rem;
+  border: 1px solid #888;
+  border-radius: 0.25rem;
+  background-color: white;
+  color: #333;
+}
+
+.basic-resource-input:focus {
+  border-color: #34f;
+  outline: none;
+}
+
+.basic-resource-button {
+  padding: 0.5rem;
+  border: 1px solid #23e;
+  border-radius: 0.25rem;
+  background-color: #34f;
+  color: white;
+}
+
+.basic-resource-button:hover {
+  background-color: #45f;
+}
+
+.basic-resource-button:active {
+  background-color: #23f;
+}

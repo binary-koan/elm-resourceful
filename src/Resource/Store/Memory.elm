@@ -9,4 +9,5 @@ memoryStore =
     { list = Task.succeed []
     , create = Task.succeed
     , update = Task.succeed
+    , pageSize = Nothing
     }
