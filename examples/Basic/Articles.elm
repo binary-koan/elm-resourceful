@@ -1,4 +1,4 @@
-module Articles exposing (..)
+module Basic.Articles exposing (articles, Model, Msg)
 
 import Resource exposing (..)
 import Resource.Render.Basic exposing (basicRenderer)

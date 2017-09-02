@@ -2,7 +2,7 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Articles exposing (..)
+import Basic.Articles as Articles exposing (articles)
 import Resource
 
 
